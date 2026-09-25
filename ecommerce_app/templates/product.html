@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Circuitloop{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index') }}">&larr; Back to catalog</a>
+
+<section class="product-detail">
+  <div class="product-tile-large" style="background:{{ product.tile_color }};">{{ product.initials }}</div>
+
+  <div class="product-detail-main">
+    <span class="product-cat">{{ product.category }} &middot; {{ product.brand }}</span>
+    <h1>{{ product.name }}</h1>
+    <p class="mono price-large">${{ '%.2f'|format(product.price) }}</p>
+    <p class="muted">Made by {{ product.manufacturer }}</p>
+    <div class="buy-row">
+      <button class="btn-primary" onclick="addToCart('{{ product.product_id }}', {{ product.name | tojson }}, {{ product.price }})">Add to cart</button>
+      <button class="btn-secondary" onclick="alert('This is a demo storefront — checkout is not implemented.')">Buy now</button>
+    </div>
+  </div>
+
+  <div class="rating-panel">
+    <div class="rating-headline">
+      <span class="rating-big mono">{{ product.avg_rating }}</span>
+      <span class="muted">out of 5 &middot; {{ product.review_count }} reviews</span>
+    </div>
+    {% for row in rating_breakdown %}
+    <div class="rating-bar-row">
+      <span class="mono">{{ row.stars }}★</span>
+      <div class="rating-bar-track">
+        <div class="rating-bar-fill" style="width: {{ (row.count / product.review_count * 100) if product.review_count else 0 }}%"></div>
+      </div>
+      <span class="mono muted">{{ row.count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="reviews-section">
+  <div class="reviews-header">
+    <h2>Reviews</h2>
+    <div class="reviews-controls">
+      <select id="sentiment-filter">
+        <option value="">All sentiment</option>
+        <option value="positive">Positive</option>
+        <option value="neutral">Neutral</option>
+        <option value="negative">Negative</option>
+      </select>
+      <select id="rating-filter">
+        <option value="">All ratings</option>
+        <option value="5">5 stars</option>
+        <option value="4">4 stars</option>
+        <option value="3">3 stars</option>
+        <option value="2">2 stars</option>
+        <option value="1">1 star</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="review-list" class="review-list">Loading reviews&hellip;</div>
+  <div class="pager">
+    <button id="prev-page" disabled>&larr; Prev</button>
+    <span id="page-indicator" class="mono muted"></span>
+    <button id="next-page">Next &rarr;</button>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const productId = {{ product.product_id | tojson }};
+  let page = 1;
+  const perPage = 8;
+
+  const reviewList = document.getElementById('review-list');
+  const pageIndicator = document.getElementById('page-indicator');
+  const prevBtn = document.getElementById('prev-page');
+  const nextBtn = document.getElementById('next-page');
+  const sentimentFilter = document.getElementById('sentiment-filter');
+  const ratingFilter = document.getElementById('rating-filter');
+
+  function starString(n) {
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+
+  function renderReviews(data) {
+    if (!data.reviews.length) {
+      reviewList.innerHTML = '<p class="muted">No reviews match these filters.</p>';
+    } else {
+      reviewList.innerHTML = data.reviews.map(r => `
+        <article class="review-card">
+          <div class="review-card-top">
+            <span class="mono stars">${starString(r.rating)}</span>
+            <span class="review-title">${r.title}</span>
+          </div>
+          <p class="review-text">${r.text}</p>
+          <div class="review-meta muted">
+            <span>${r.username}</span>
+            <span>&middot;</span>
+            <span>${r.date}</span>
+            <span>&middot;</span>
+            ${r.did_purchase ? '<span class="badge-verified">Verified purchase</span>' : '<span>Unverified</span>'}
+            <span>&middot;</span>
+            <span>${r.num_helpful} found helpful</span>
+          </div>
+        </article>
+      `).join('');
+    }
+    pageIndicator.textContent = `page ${data.page} / ${data.total_pages} (${data.total} reviews)`;
+    prevBtn.disabled = data.page <= 1;
+    nextBtn.disabled = data.page >= data.total_pages;
+  }
+
+  async function loadReviews() {
+    reviewList.innerHTML = 'Loading reviews&hellip;';
+    const params = new URLSearchParams({ product: productId, page, per_page: perPage });
+    if (sentimentFilter.value) params.set('sentiment', sentimentFilter.value);
+    if (ratingFilter.value) params.set('rating', ratingFilter.value);
+    const res = await fetch(`/reviews?${params.toString()}`);
+    const data = await res.json();
+    renderReviews(data);
+  }
+
+  prevBtn.addEventListener('click', () => { page = Math.max(1, page - 1); loadReviews(); });
+  nextBtn.addEventListener('click', () => { page += 1; loadReviews(); });
+  sentimentFilter.addEventListener('change', () => { page = 1; loadReviews(); });
+  ratingFilter.addEventListener('change', () => { page = 1; loadReviews(); });
+
+  loadReviews();
+</script>
+{% endblock %}

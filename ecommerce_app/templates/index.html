@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Circuitloop — Catalog{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <h1>Twenty products.<br><em>Thousands</em> of honest-ish opinions.</h1>
+    <p class="hero-sub">A synthetic electronics storefront for testing review pipelines. Every rating, username and sentence below was generated, not written.</p>
+  </div>
+  <div class="hero-stat">
+    <span class="big mono">{{ avg_rating_all }}★</span>
+    <span class="label">avg. rating across {{ '{:,}'.format(total_reviews) }} reviews</span>
+  </div>
+</section>
+
+<section class="filter-row" aria-label="Filter and sort">
+  <a class="chip {{ 'is-active' if not active_category else '' }}" href="{{ url_for('index') }}">All categories</a>
+  {% for c in categories %}
+  <a class="chip {{ 'is-active' if active_category == c else '' }}" href="{{ url_for('index', category=c) }}">{{ c }}</a>
+  {% endfor %}
+  <select class="sort-select" id="sort-select">
+    <option value="featured" {{ 'selected' if sort == 'featured' }}>Featured</option>
+    <option value="price_asc" {{ 'selected' if sort == 'price_asc' }}>Price: low to high</option>
+    <option value="price_desc" {{ 'selected' if sort == 'price_desc' }}>Price: high to low</option>
+    <option value="rating" {{ 'selected' if sort == 'rating' }}>Top rated</option>
+  </select>
+</section>
+
+{% if not products %}
+<p class="muted">No products match your search.</p>
+{% endif %}
+
+<section class="product-grid">
+  {% for p in products %}
+  <div class="product-card">
+    <a href="{{ url_for('product_page', product_id=p.product_id) }}" style="text-decoration:none; color:inherit;">
+      <div class="product-tile" style="background:{{ p.tile_color }};">{{ p.initials }}</div>
+    </a>
+    <div class="product-card-top">
+      <span class="product-cat">{{ p.category }}</span>
+      <span class="product-price">${{ '%.2f'|format(p.price) }}</span>
+    </div>
+    <a href="{{ url_for('product_page', product_id=p.product_id) }}" style="text-decoration:none; color:inherit;">
+      <h2 class="product-name">{{ p.name }}</h2>
+    </a>
+    <span class="product-brand">{{ p.brand }}</span>
+    <div class="product-card-bottom">
+      <span><span class="rating-num">{{ p.avg_rating }}★</span> &middot; {{ p.review_count }} reviews</span>
+      <button class="add-cart-btn" onclick="addToCart('{{ p.product_id }}', {{ p.name | tojson }}, {{ p.price }})">Add to cart</button>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('sort-select').addEventListener('change', (e) => {
+    const url = new URL(window.location);
+    url.searchParams.set('sort', e.target.value);
+    window.location = url;
+  });
+</script>
+{% endblock %}
